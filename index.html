@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0a0a">
+<title>Market Pulse</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📊</text></svg>">
+<style>
+  :root {
+    --bg: #fafafa; --bg2: #ffffff; --bg3: #f3f4f6;
+    --tx: #111; --tx2: #6b7280; --tx3: #9ca3af;
+    --bd: #e5e7eb;
+    --green: #16a34a; --green-bg: #dcfce7; --green-tx: #166534;
+    --amber: #d97706; --amber-bg: #fef3c7; --amber-tx: #92400e;
+    --red: #dc2626; --red-bg: #fee2e2; --red-tx: #991b1b;
+    --purple: #7c3aed; --purple-bg: #ede9fe; --purple-tx: #5b21b6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0a0a0a; --bg2: #171717; --bg3: #1f1f1f;
+      --tx: #f5f5f5; --tx2: #a1a1aa; --tx3: #71717a;
+      --bd: #2e2e2e;
+      --green: #4ade80; --green-bg: #14532d; --green-tx: #bbf7d0;
+      --amber: #fbbf24; --amber-bg: #451a03; --amber-tx: #fde68a;
+      --red: #f87171; --red-bg: #450a0a; --red-tx: #fecaca;
+      --purple: #a78bfa; --purple-bg: #2e1065; --purple-tx: #ddd6fe;
+    }
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', 'Segoe UI', system-ui, sans-serif;
+    background: var(--bg); color: var(--tx); padding: 16px; max-width: 480px; margin: 0 auto;
+    -webkit-font-smoothing: antialiased; }
+
+  .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
+  .header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+  .header .date { font-size: 12px; color: var(--tx2); margin-top: 2px; }
+  .header .updated { font-size: 11px; color: var(--tx3); text-align: right; }
+
+  .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .card { background: var(--bg2); border: 1px solid var(--bd); border-radius: 14px; padding: 14px 16px; }
+  .card .label { font-size: 11px; color: var(--tx2); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
+  .card .value { font-size: 44px; font-weight: 700; line-height: 1; margin: 6px 0; letter-spacing: -0.03em; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 6px; }
+  .badge-cn { display: block; font-size: 12px; font-weight: 500; color: var(--tx2); margin-top: 4px; }
+
+  .bar-wrap { margin-top: 10px; }
+  .bar-track { height: 6px; border-radius: 3px; display: flex; overflow: hidden; position: relative; }
+  .bar-marker { position: absolute; top: -5px; width: 3px; height: 16px; border-radius: 2px; background: var(--tx);
+    transform: translateX(-50%); transition: left 0.6s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .bar-labels { display: flex; justify-content: space-between; font-size: 10px; color: var(--tx3); margin-top: 3px; }
+
+  .playbook { background: var(--bg2); border: 1px solid var(--bd); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
+  .pb-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--tx2); margin-bottom: 8px; }
+  .pb-row { display: grid; grid-template-columns: 70px 60px 1fr 36px; gap: 4px; align-items: center;
+    font-size: 12px; color: var(--tx2); padding: 6px 0; border-bottom: 1px solid var(--bd); }
+  .pb-row:last-child { border-bottom: none; }
+  .pb-row.active { color: var(--tx); font-weight: 600; background: var(--bg3); border-radius: 8px; padding: 6px 8px; margin: 2px -8px; }
+  .now { display: none; background: var(--green); color: #fff; font-size: 9px; font-weight: 700;
+    padding: 2px 6px; border-radius: 4px; text-align: center; }
+  .now.show { display: inline-block; }
+
+  .strategy { background: var(--bg3); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px;
+    border-left: 4px solid var(--green); }
+  .strategy .strat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--tx2); font-weight: 500; }
+  .strategy .strat-text { font-size: 16px; font-weight: 600; margin-top: 4px; letter-spacing: -0.01em; }
+
+  .trend { background: var(--bg2); border: 1px solid var(--bd); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
+  .trend canvas { width: 100%; height: 120px; }
+
+  .footer { text-align: center; font-size: 10px; color: var(--tx3); padding: 8px 0; }
+
+  .loading { text-align: center; padding: 40px 0; color: var(--tx3); font-size: 13px; }
+  .error { text-align: center; padding: 20px; color: var(--red); font-size: 12px; background: var(--red-bg); border-radius: 10px; margin-bottom: 12px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Market Pulse</h1>
+    <div class="date" id="date-display"></div>
+  </div>
+  <div class="updated" id="updated-display">Loading...</div>
+</div>
+
+<div id="main-content">
+  <div class="loading" id="loading">Fetching data...</div>
+</div>
+
+<div class="footer">
+  Data: CBOE · CNN | For reference only · Not investment advice<br>
+  Auto-updates via GitHub Actions
+</div>
+
+<template id="dashboard-tpl">
+  <div class="cards">
+    <div class="card">
+      <div class="label">VIX</div>
+      <div class="value" id="vix-val" style="color:var(--green)">—</div>
+      <span class="badge" id="vix-badge">—</span>
+      <span class="badge-cn" id="vix-cn"></span>
+      <div class="bar-wrap">
+        <div style="position:relative">
+          <div class="bar-track">
+            <div style="flex:12;background:#86efac"></div>
+            <div style="flex:8;background:#bbf7d0"></div>
+            <div style="flex:10;background:#fde68a"></div>
+            <div style="flex:20;background:#fca5a5"></div>
+            <div style="flex:10;background:#f87171"></div>
+          </div>
+          <div class="bar-marker" id="vix-marker"></div>
+        </div>
+        <div class="bar-labels"><span>&lt;12</span><span>20</span><span>30</span><span>50</span><span>60+</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="label">Fear & Greed</div>
+      <div class="value" id="fg-val" style="color:var(--amber)">—</div>
+      <span class="badge" id="fg-badge">—</span>
+      <span class="badge-cn" id="fg-cn"></span>
+      <div class="bar-wrap">
+        <div style="position:relative">
+          <div class="bar-track">
+            <div style="flex:24;background:#f87171"></div>
+            <div style="flex:20;background:#fca5a5"></div>
+            <div style="flex:11;background:#c4b5fd"></div>
+            <div style="flex:20;background:#fde68a"></div>
+            <div style="flex:25;background:#fb923c"></div>
+          </div>
+          <div class="bar-marker" id="fg-marker"></div>
+        </div>
+        <div class="bar-labels"><span>0</span><span>25</span><span>50</span><span>75</span><span>100</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="strategy">
+    <div class="strat-label">Today's strategy · 今日策略</div>
+    <div class="strat-text" id="strat-text">—</div>
+  </div>
+
+  <div class="playbook">
+    <div class="pb-title">VIX Playbook</div>
+    <div class="pb-row" id="vr1"><span style="color:var(--green)">&lt; 12</span><span>极度乐观</span><span>谨慎追高，保持警觉</span><span><span class="now" id="vn1">NOW</span></span></div>
+    <div class="pb-row" id="vr2"><span style="color:var(--green)">12–20</span><span>正常区间</span><span>常规定投，保持节奏</span><span><span class="now" id="vn2">NOW</span></span></div>
+    <div class="pb-row" id="vr3"><span style="color:var(--amber)">20–30</span><span>恐慌上升</span><span>加大定投，分批买入</span><span><span class="now" id="vn3">NOW</span></span></div>
+    <div class="pb-row" id="vr4"><span style="color:var(--red)">30–50</span><span>市场恐慌</span><span>加倍定投，逢低布局</span><span><span class="now" id="vn4">NOW</span></span></div>
+    <div class="pb-row" id="vr5"><span style="color:var(--red)">&gt; 50</span><span>极度恐慌</span><span>黄金机会，大胆抄底</span><span><span class="now" id="vn5">NOW</span></span></div>
+  </div>
+
+  <div class="playbook">
+    <div class="pb-title">Fear & Greed Playbook</div>
+    <div class="pb-row" id="fr1"><span style="color:var(--red)">0–24</span><span>极度恐惧</span><span>黄金机会，加倍买入</span><span><span class="now" id="fn1">NOW</span></span></div>
+    <div class="pb-row" id="fr2"><span style="color:var(--red)">25–44</span><span>恐惧</span><span>加大定投，分批布局</span><span><span class="now" id="fn2">NOW</span></span></div>
+    <div class="pb-row" id="fr3"><span style="color:var(--purple)">45–55</span><span>中性</span><span>常规定投，保持节奏</span><span><span class="now" id="fn3">NOW</span></span></div>
+    <div class="pb-row" id="fr4"><span style="color:var(--amber)">56–75</span><span>贪婪</span><span>谨慎追高，控制仓位</span><span><span class="now" id="fn4">NOW</span></span></div>
+    <div class="pb-row" id="fr5"><span style="color:var(--amber)">76–100</span><span>极度贪婪</span><span>警惕回调，部分止盈</span><span><span class="now" id="fn5">NOW</span></span></div>
+  </div>
+
+  <div class="trend" id="trend-section" style="display:none">
+    <div class="pb-title">30-day trend</div>
+    <canvas id="trend-chart"></canvas>
+  </div>
+</template>
+
+<script>
+const $ = id => document.getElementById(id);
+
+const today = new Date();
+$('date-display').textContent = today.toLocaleDateString('zh-CN',{year:'numeric',month:'2-digit',day:'2-digit'})
+  + ' / ' + today.toLocaleDateString('en-US',{weekday:'long'});
+
+function vixZone(v) {
+  if (v < 12) return { en:'Extreme Low', cn:'极度乐观', strat:'谨慎追高 · 保持警觉', color:'--green', idx:1, pct:(v/60)*100 };
+  if (v < 20) return { en:'Normal', cn:'正常波动', strat:'常规定投 · 保持节奏', color:'--green', idx:2, pct:(v/60)*100 };
+  if (v < 30) return { en:'Elevated', cn:'恐慌上升', strat:'加大定投 · 分批买入', color:'--amber', idx:3, pct:(v/60)*100 };
+  if (v < 50) return { en:'High Fear', cn:'市场恐慌', strat:'加倍定投 · 逢低布局', color:'--red', idx:4, pct:(v/60)*100 };
+  return { en:'Extreme Fear', cn:'极度恐慌', strat:'黄金机会 · 大胆抄底', color:'--red', idx:5, pct: Math.min(95,(v/60)*100) };
+}
+
+function fgZone(v) {
+  if (v <= 24) return { en:'Extreme Fear', cn:'极度恐惧', strat:'黄金机会 · 加倍买入', color:'--red', idx:1, pct:v };
+  if (v <= 44) return { en:'Fear', cn:'恐惧', strat:'加大定投 · 分批布局', color:'--red', idx:2, pct:v };
+  if (v <= 55) return { en:'Neutral', cn:'中性', strat:'常规定投 · 保持节奏', color:'--purple', idx:3, pct:v };
+  if (v <= 75) return { en:'Greed', cn:'贪婪', strat:'谨慎追高 · 控制仓位', color:'--amber', idx:4, pct:v };
+  return { en:'Extreme Greed', cn:'极度贪婪', strat:'警惕回调 · 部分止盈', color:'--amber', idx:5, pct: Math.min(97,v) };
+}
+
+function render(data) {
+  const main = $('main-content');
+  const tpl = $('dashboard-tpl');
+  main.innerHTML = '';
+  main.appendChild(tpl.content.cloneNode(true));
+
+  const { vix, fear_greed, updated_utc } = data.current;
+
+  if (updated_utc) {
+    const d = new Date(updated_utc);
+    $('updated-display').textContent = 'Updated ' + d.toLocaleDateString('en-US',{month:'short',day:'numeric'})
+      + ' ' + d.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'}) + ' UTC';
+  }
+
+  if (vix != null) {
+    const vz = vixZone(vix);
+    $('vix-val').textContent = vix.toFixed(1);
+    $('vix-val').style.color = 'var(' + vz.color + ')';
+    $('vix-badge').textContent = vz.en;
+    $('vix-badge').style.background = 'var(' + vz.color + '-bg)';
+    $('vix-badge').style.color = 'var(' + vz.color + '-tx)';
+    $('vix-cn').textContent = vz.cn;
+    $('vix-marker').style.left = Math.max(3, Math.min(97, vz.pct)) + '%';
+    for (let i = 1; i <= 5; i++) {
+      $('vr' + i).classList.toggle('active', i === vz.idx);
+      $('vn' + i).classList.toggle('show', i === vz.idx);
+    }
+  }
+
+  if (fear_greed != null) {
+    const fz = fgZone(fear_greed);
+    $('fg-val').textContent = Math.round(fear_greed);
+    $('fg-val').style.color = 'var(' + fz.color + ')';
+    $('fg-badge').textContent = fz.en;
+    $('fg-badge').style.background = 'var(' + fz.color + '-bg)';
+    $('fg-badge').style.color = 'var(' + fz.color + '-tx)';
+    $('fg-cn').textContent = fz.cn;
+    $('fg-marker').style.left = Math.max(3, Math.min(97, fz.pct)) + '%';
+    for (let i = 1; i <= 5; i++) {
+      $('fr' + i).classList.toggle('active', i === fz.idx);
+      $('fn' + i).classList.toggle('show', i === fz.idx);
+    }
+  }
+
+  if (vix != null && fear_greed != null) {
+    const vz = vixZone(vix), fz = fgZone(fear_greed);
+    $('strat-text').textContent = vz.strat + ' / ' + fz.strat;
+  }
+
+  // Mini trend chart (canvas, no dependencies)
+  const hist = (data.history || []).slice(-30);
+  if (hist.length >= 2) {
+    $('trend-section').style.display = '';
+    const canvas = $('trend-chart');
+    const ctx = canvas.getContext('2d');
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.offsetWidth, h = 120;
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+    ctx.scale(dpr, dpr);
+
+    const vixVals = hist.map(d => d.vix).filter(v => v != null);
+    const fgVals = hist.map(d => d.fear_greed).filter(v => v != null);
+
+    function drawLine(vals, color, minV, maxV) {
+      if (vals.length < 2) return;
+      const range = maxV - minV || 1;
+      ctx.beginPath();
+      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+      vals.forEach((v, i) => {
+        const x = (i / (vals.length - 1)) * (w - 32) + 16;
+        const y = h - 16 - ((v - minV) / range) * (h - 32);
+        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+      // endpoint dot
+      const lastX = w - 16, lastY = h - 16 - ((vals[vals.length-1] - minV) / range) * (h - 32);
+      ctx.beginPath(); ctx.arc(lastX, lastY, 3, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+    }
+
+    const isDark = window.matchMedia('(prefers-color-scheme:dark)').matches;
+    ctx.fillStyle = isDark ? '#333' : '#e5e7eb';
+    ctx.fillRect(16, h / 2, w - 32, 0.5);
+
+    drawLine(vixVals, isDark ? '#4ade80' : '#16a34a', 0, 60);
+    drawLine(fgVals, isDark ? '#fbbf24' : '#d97706', 0, 100);
+
+    // Legend
+    ctx.font = '10px -apple-system, sans-serif';
+    ctx.fillStyle = isDark ? '#4ade80' : '#16a34a';
+    ctx.fillText('VIX', 16, 12);
+    ctx.fillStyle = isDark ? '#fbbf24' : '#d97706';
+    ctx.fillText('F&G', 50, 12);
+  }
+}
+
+// Fetch data.json (relative path works on GitHub Pages)
+fetch('data.json?' + Date.now())
+  .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
+  .then(data => {
+    if (data.current.vix == null && data.current.fear_greed == null) {
+      $('main-content').innerHTML = '<div class="error">No data yet. Run the GitHub Action manually to seed initial data.</div>';
+    } else {
+      render(data);
+    }
+  })
+  .catch(e => {
+    $('main-content').innerHTML = '<div class="error">Failed to load data.json — ' + e.message + '</div>';
+  });
+</script>
+
+</body>
+</html>
