@@ -78,12 +78,18 @@
   .range-toggle button { font: inherit; font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 6px;
     background: transparent; border: 1px solid var(--bd); color: var(--tx2); cursor: pointer; }
   .range-toggle button.active { background: var(--bg3); color: var(--tx); border-color: var(--tx2); }
-  .legend { display: flex; gap: 12px; font-size: 10px; color: var(--tx2); margin-top: 6px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 12px; font-size: 10px; color: var(--tx2); margin-top: 6px; align-items: center; }
   .legend-item { display: flex; align-items: center; gap: 4px; }
+  .zone-btn { font: inherit; font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 6px;
+    background: transparent; border: 1px solid var(--bd); color: var(--tx2); cursor: pointer; margin-left: auto; }
+  .zone-btn.active { background: rgba(34,197,94,0.12); border-color: var(--green); color: var(--green); }
   .legend-line { display: inline-block; width: 16px; height: 0; border-top: 2px solid; }
-  .legend-line.dashed { border-top-style: dashed; }
-  .legend-line.dotted { border-top-style: dotted; border-top-width: 3px; }
+  .legend-line.dashed { border-top-style: dashed; opacity: 0.5; }
+  .legend-line.dotted { border-top-style: dotted; border-top-width: 3px; opacity: 0.5; }
   .trend-note { font-size: 10px; color: var(--tx3); margin-top: 4px; line-height: 1.4; }
+  .csv-link { display: inline-block; font-size: 10px; color: var(--tx2); margin-top: 6px;
+    text-decoration: none; cursor: pointer; border-bottom: 1px dashed var(--bd); }
+  .csv-link:hover { color: var(--tx); border-bottom-color: var(--tx2); }
   .tooltip { position: absolute; pointer-events: none; background: var(--bg2); border: 1px solid var(--bd);
     border-radius: 8px; padding: 6px 8px; font-size: 11px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
     white-space: nowrap; opacity: 0; transition: opacity 0.1s; z-index: 5; }
@@ -164,8 +170,8 @@
       <div class="range-toggle" id="range-toggle">
         <button data-range="30" class="active">1M</button>
         <button data-range="90">3M</button>
-        <button data-range="180">6M</button>
         <button data-range="365">1Y</button>
+        <button data-range="1825">5Y</button>
       </div>
     </div>
     <div class="chart-wrap">
@@ -176,8 +182,10 @@
       <span class="legend-item"><span class="legend-line" style="border-color:var(--green)"></span>VOO</span>
       <span class="legend-item"><span class="legend-line dashed" style="border-color:var(--red)"></span>VIX</span>
       <span class="legend-item"><span class="legend-line dotted" style="border-color:var(--amber)"></span>F&amp;G</span>
+      <button class="zone-btn" id="zone-toggle" title="Highlight days where VIX > 30 and F&G < 44">Mark buy zones</button>
     </div>
-    <div class="trend-note">Each line normalized to its own min/max in the visible window — compare shape, not scale. Hover or tap the chart for values.</div>
+    <div class="trend-note">Each line normalized to its own min/max in the visible window — compare shape, not scale. Hover or tap the chart for values. F&amp;G data limited to last ~1y (CNN endpoint depth).</div>
+    <a class="csv-link" id="csv-download" href="#">Download full history (CSV) ↓</a>
   </div>
 
   <div class="playbooks-wrap">
@@ -279,14 +287,18 @@ function render(data) {
     const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     const PAD_L = 16, PAD_R = 16, PAD_T = 16, PAD_B = 32;
     const SERIES = [
-      { key: 'voo',        label: 'VOO', colorVar: '--green', dash: null,    width: 2.5, fmt: v => '$' + v.toFixed(2) },
-      { key: 'vix',        label: 'VIX', colorVar: '--red',   dash: [5, 4],  width: 1.8, fmt: v => v.toFixed(2) },
-      { key: 'fear_greed', label: 'F&G', colorVar: '--amber', dash: [1, 3],  width: 1.8, fmt: v => Math.round(v) },
+      { key: 'voo',        label: 'VOO', colorVar: '--green', dash: null,    width: 2.5, alpha: 1.0, fmt: v => '$' + v.toFixed(2) },
+      { key: 'vix',        label: 'VIX', colorVar: '--red',   dash: [5, 4],  width: 1.8, alpha: 0.5, fmt: v => v.toFixed(2) },
+      { key: 'fear_greed', label: 'F&G', colorVar: '--amber', dash: [1, 3],  width: 1.8, alpha: 0.5, fmt: v => Math.round(v) },
     ];
 
     let currentRange = 30;
     let hist = [];
     let viewW = 0, viewH = 0;
+    let showZones = localStorage.getItem('mp-zones') === '1';
+    if (showZones) $('zone-toggle').classList.add('active');
+
+    const isBuyZone = d => d.vix != null && d.vix > 30 && d.fear_greed != null && d.fear_greed < 44;
 
     const xForIdx = i => (i / Math.max(hist.length - 1, 1)) * (viewW - PAD_L - PAD_R) + PAD_L;
     const yForVal = (v, min, max) => {
@@ -316,28 +328,68 @@ function render(data) {
       const axisColor = isDark ? '#3a3a3a' : '#e5e7eb';
       const labelColor = cssVar('--tx3');
 
+      // buy-zone bands (drawn first, behind everything)
+      if (showZones) {
+        ctx.fillStyle = isDark ? 'rgba(74,222,128,0.16)' : 'rgba(34,197,94,0.13)';
+        let start = -1;
+        for (let i = 0; i <= hist.length; i++) {
+          const inZone = i < hist.length && isBuyZone(hist[i]);
+          if (inZone && start === -1) start = i;
+          if (!inZone && start !== -1) {
+            const x1 = xForIdx(Math.max(0, start - 0.5));
+            const x2 = xForIdx(Math.min(hist.length - 1, i - 0.5));
+            ctx.fillRect(x1, PAD_T, Math.max(2, x2 - x1), viewH - PAD_T - PAD_B);
+            start = -1;
+          }
+        }
+      }
+
       // baseline
       ctx.fillStyle = axisColor;
       ctx.fillRect(PAD_L, viewH - PAD_B, viewW - PAD_L - PAD_R, 0.5);
 
-      // x-axis date labels (4-5 evenly spaced)
-      const labelCount = viewW < 360 ? 4 : 5;
+      // x-axis date labels — adapt format/positions to the visible time span
       ctx.fillStyle = labelColor;
       ctx.font = '10px -apple-system, sans-serif';
       ctx.textAlign = 'center';
-      const showYear = currentRange >= 180;
-      for (let i = 0; i < labelCount; i++) {
-        const idx = Math.round(i * (hist.length - 1) / (labelCount - 1));
-        const d = hist[idx]?.date;
-        if (!d) continue;
-        const dt = new Date(d + 'T00:00:00');
-        const txt = showYear
-          ? dt.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
-          : dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const labels = [];
+      if (currentRange > 365) {
+        // Long ranges: label at year boundaries, year-only ("2022", "2023", ...)
+        let prevYear = null;
+        hist.forEach((d, i) => {
+          const y = d.date.slice(0, 4);
+          if (y !== prevYear) {
+            labels.push({ idx: i, text: y });
+            prevYear = y;
+          }
+        });
+        // If we somehow get too many year labels, thin them out
+        const maxYearLabels = viewW < 360 ? 5 : 8;
+        if (labels.length > maxYearLabels) {
+          const step = Math.ceil(labels.length / maxYearLabels);
+          for (let i = labels.length - 1; i >= 0; i--) {
+            if (i % step !== 0) labels.splice(i, 1);
+          }
+        }
+      } else {
+        // Short/medium ranges: 4-5 evenly spaced labels
+        const labelCount = viewW < 360 ? 4 : 5;
+        for (let i = 0; i < labelCount; i++) {
+          const idx = Math.round(i * (hist.length - 1) / (labelCount - 1));
+          const d = hist[idx]?.date;
+          if (!d) continue;
+          const dt = new Date(d + 'T00:00:00');
+          const text = currentRange <= 90
+            ? dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            : dt.toLocaleDateString('en-US', { month: 'short' });
+          labels.push({ idx, text });
+        }
+      }
+      labels.forEach(({ idx, text }) => {
         const x = xForIdx(idx);
         const tx = Math.max(PAD_L + 12, Math.min(viewW - PAD_R - 12, x));
-        ctx.fillText(txt, tx, viewH - PAD_B + 14);
-      }
+        ctx.fillText(text, tx, viewH - PAD_B + 14);
+      });
       ctx.textAlign = 'start';
 
       const stats = seriesStats();
@@ -357,6 +409,7 @@ function render(data) {
       stats.forEach(s => {
         if (s.valid.length < 2) return;
         const color = cssVar(s.colorVar);
+        ctx.globalAlpha = s.alpha != null ? s.alpha : 1;
         ctx.setLineDash(s.dash || []);
         ctx.lineCap = s.dash && s.dash[0] === 1 ? 'round' : 'butt';
         ctx.beginPath();
@@ -375,7 +428,8 @@ function render(data) {
           const x = xForIdx(lastIdx), y = yForVal(s.vals[lastIdx], s.min, s.max);
           ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
         }
-        // hover dot
+        // hover dot — full opacity so it stays clearly visible
+        ctx.globalAlpha = 1;
         if (hoverIdx != null && s.vals[hoverIdx] != null) {
           const x = xForIdx(hoverIdx), y = yForVal(s.vals[hoverIdx], s.min, s.max);
           ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
@@ -383,6 +437,7 @@ function render(data) {
           ctx.strokeStyle = cssVar('--bg2'); ctx.lineWidth = 1.5; ctx.stroke();
         }
       });
+      ctx.globalAlpha = 1;
     };
 
     const showTooltip = (idx, pointerX) => {
@@ -430,11 +485,41 @@ function render(data) {
     canvas.addEventListener('touchend', () => { drawChart(); hideTooltip(); });
 
     drawChart();
+
+    // CSV export of the full stored history (not just the visible range)
+    $('csv-download').addEventListener('click', e => {
+      e.preventDefault();
+      const all = data.history || [];
+      const rows = [['date', 'vix', 'voo', 'fear_greed']];
+      all.forEach(r => rows.push([
+        r.date,
+        r.vix != null ? r.vix : '',
+        r.voo != null ? r.voo : '',
+        r.fear_greed != null ? r.fear_greed : '',
+      ]));
+      const csv = rows.map(r => r.join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'market-pulse-' + new Date().toISOString().slice(0, 10) + '.csv';
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
     $('range-toggle').addEventListener('click', e => {
       const btn = e.target.closest('button[data-range]');
       if (!btn) return;
       currentRange = parseInt(btn.dataset.range, 10);
       $('range-toggle').querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+      hideTooltip();
+      drawChart();
+    });
+
+    $('zone-toggle').addEventListener('click', () => {
+      showZones = !showZones;
+      $('zone-toggle').classList.toggle('active', showZones);
+      localStorage.setItem('mp-zones', showZones ? '1' : '0');
       hideTooltip();
       drawChart();
     });

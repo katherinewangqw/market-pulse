@@ -8,7 +8,7 @@ import urllib.request
 from datetime import datetime, timezone
 
 DATA_FILE = "data.json"
-HISTORY_DAYS = 365
+HISTORY_DAYS = 20 * 365  # generous cap so backfilled F&G history (back to 2011) is preserved
 
 YAHOO_HEADERS = {"User-Agent": "Mozilla/5.0"}
 CNN_HEADERS = {
@@ -23,7 +23,7 @@ CNN_HEADERS = {
 
 def fetch_yahoo(symbol):
     """Fetch a Yahoo symbol's recent daily history. Returns (current, prev_close, [(date, close), ...])."""
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=1y&interval=1d"
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=5y&interval=1d"
     req = urllib.request.Request(url, headers=YAHOO_HEADERS)
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
