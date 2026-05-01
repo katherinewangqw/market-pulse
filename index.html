@@ -62,13 +62,25 @@
     padding: 2px 6px; border-radius: 4px; text-align: center; }
   .now.show { display: inline-block; }
 
-  .strategy { background: var(--bg3); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px;
-    border-left: 4px solid var(--green); }
-  .strategy .strat-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--tx2); font-weight: 500; }
-  .strategy .strat-text { font-size: 16px; font-weight: 600; margin-top: 4px; letter-spacing: -0.01em; }
+  .voo-card { background: var(--bg2); border: 1px solid var(--bd); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px;
+    display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .voo-card .label { font-size: 11px; color: var(--tx2); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
+  .voo-card .voo-val { font-size: 28px; font-weight: 700; line-height: 1; margin-top: 4px; letter-spacing: -0.02em; }
+  .voo-change { text-align: right; }
+  .voo-change-pct { font-size: 18px; font-weight: 700; }
+  .voo-change-abs { font-size: 11px; color: var(--tx2); display: block; margin-top: 2px; }
 
   .trend { background: var(--bg2); border: 1px solid var(--bd); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
-  .trend canvas { width: 100%; height: 120px; }
+  .trend canvas { width: 100%; height: 140px; }
+  .trend-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .range-toggle { display: flex; gap: 4px; }
+  .range-toggle button { font: inherit; font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 6px;
+    background: transparent; border: 1px solid var(--bd); color: var(--tx2); cursor: pointer; }
+  .range-toggle button.active { background: var(--bg3); color: var(--tx); border-color: var(--tx2); }
+  .legend { display: flex; gap: 12px; font-size: 10px; color: var(--tx2); margin-top: 6px; }
+  .legend-item { display: flex; align-items: center; gap: 4px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+  .trend-note { font-size: 10px; color: var(--tx3); margin-top: 4px; line-height: 1.4; }
 
   .footer { text-align: center; font-size: 10px; color: var(--tx3); padding: 8px 0; }
 
@@ -137,9 +149,15 @@
     </div>
   </div>
 
-  <div class="strategy">
-    <div class="strat-label">Today's strategy · 今日策略</div>
-    <div class="strat-text" id="strat-text">—</div>
+  <div class="voo-card">
+    <div>
+      <div class="label">VOO · S&P 500 ETF</div>
+      <div class="voo-val" id="voo-val">—</div>
+    </div>
+    <div class="voo-change">
+      <span class="voo-change-pct" id="voo-change-pct">—</span>
+      <span class="voo-change-abs" id="voo-change-abs"></span>
+    </div>
   </div>
 
   <div class="playbook">
@@ -161,8 +179,21 @@
   </div>
 
   <div class="trend" id="trend-section" style="display:none">
-    <div class="pb-title">30-day trend</div>
+    <div class="trend-head">
+      <div class="pb-title" style="margin:0">Trend comparison</div>
+      <div class="range-toggle" id="range-toggle">
+        <button data-range="30" class="active">30d</button>
+        <button data-range="60">60d</button>
+        <button data-range="90">90d</button>
+      </div>
+    </div>
     <canvas id="trend-chart"></canvas>
+    <div class="legend">
+      <span class="legend-item"><span class="legend-dot" style="background:var(--red)"></span>VIX</span>
+      <span class="legend-item"><span class="legend-dot" style="background:var(--amber)"></span>F&amp;G</span>
+      <span class="legend-item"><span class="legend-dot" style="background:var(--green)"></span>VOO</span>
+    </div>
+    <div class="trend-note">Each line normalized to its own min/max in the visible window — compare shape, not scale.</div>
   </div>
 </template>
 
@@ -195,7 +226,7 @@ function render(data) {
   main.innerHTML = '';
   main.appendChild(tpl.content.cloneNode(true));
 
-  const { vix, fear_greed, updated_utc } = data.current;
+  const { vix, fear_greed, voo, voo_change_pct, voo_prev_close, updated_utc } = data.current;
 
   if (updated_utc) {
     const d = new Date(updated_utc);
@@ -231,11 +262,6 @@ function render(data) {
       $('fr' + i).classList.toggle('active', i === fz.idx);
       $('fn' + i).classList.toggle('show', i === fz.idx);
     }
-  }
-
-  if (vix != null && fear_greed != null) {
-    const vz = vixZone(vix), fz = fgZone(fear_greed);
-    $('strat-text').textContent = vz.strat + ' / ' + fz.strat;
   }
 
   // Mini trend chart (canvas, no dependencies)

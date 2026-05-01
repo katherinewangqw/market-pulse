@@ -1,45 +1,74 @@
 """
-Fetch VIX (from Yahoo Finance) and CNN Fear & Greed Index.
+Fetch VIX, VOO (Yahoo Finance) and CNN Fear & Greed Index.
+Uses ranged calls so a single fetch yields both current value and ~90 days of history.
 Writes results to data.json for the static dashboard.
 """
 import json
 import urllib.request
-import urllib.error
 from datetime import datetime, timezone
 
 DATA_FILE = "data.json"
+HISTORY_DAYS = 90
+
+YAHOO_HEADERS = {"User-Agent": "Mozilla/5.0"}
+CNN_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Referer": "https://www.cnn.com/",
+    "Origin": "https://www.cnn.com",
+}
 
 
-def fetch_vix():
-    """Fetch current VIX from Yahoo Finance API."""
-    url = "https://query1.finance.yahoo.com/v8/finance/chart/%5EVIX?range=1d&interval=1d"
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+def fetch_yahoo(symbol):
+    """Fetch a Yahoo symbol's recent daily history. Returns (current, prev_close, [(date, close), ...])."""
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=3mo&interval=1d"
+    req = urllib.request.Request(url, headers=YAHOO_HEADERS)
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode())
-        meta = data["chart"]["result"][0]["meta"]
-        return round(meta["regularMarketPrice"], 2)
+        result = data["chart"]["result"][0]
+        meta = result["meta"]
+        timestamps = result.get("timestamp", []) or []
+        closes = result["indicators"]["quote"][0].get("close", []) or []
+        history = []
+        for ts, close in zip(timestamps, closes):
+            if close is None:
+                continue
+            date_str = datetime.fromtimestamp(ts, tz=timezone.utc).strftime("%Y-%m-%d")
+            history.append((date_str, round(close, 2)))
+        current = round(meta["regularMarketPrice"], 2)
+        prev_close = round(meta.get("chartPreviousClose") or meta.get("previousClose") or current, 2)
+        return current, prev_close, history
     except Exception as e:
-        print(f"VIX fetch error: {e}")
-        return None
+        print(f"{symbol} fetch error: {e}")
+        return None, None, []
 
 
 def fetch_fear_greed():
-    """Fetch CNN Fear & Greed Index."""
+    """Fetch CNN F&G current + historical. Returns (current, [(date, score), ...])."""
     url = "https://production.dataviz.cnn.io/index/fearandgreed/graphdata"
-    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    req = urllib.request.Request(url, headers=CNN_HEADERS)
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
             data = json.loads(resp.read().decode())
-        score = data["fear_and_greed"]["score"]
-        return round(score, 1)
+        current = round(data["fear_and_greed"]["score"], 1)
+        history = []
+        for entry in data.get("fear_and_greed_historical", {}).get("data", []):
+            ts_ms = entry.get("x")
+            score = entry.get("y")
+            if ts_ms is None or score is None:
+                continue
+            date_str = datetime.fromtimestamp(ts_ms / 1000, tz=timezone.utc).strftime("%Y-%m-%d")
+            history.append((date_str, round(score, 1)))
+        return current, history
     except Exception as e:
         print(f"Fear & Greed fetch error: {e}")
-        return None
+        return None, []
 
 
 def load_existing():
-    """Load existing data.json to preserve history."""
     try:
         with open(DATA_FILE, "r") as f:
             return json.load(f)
@@ -49,35 +78,56 @@ def load_existing():
 
 def main():
     now = datetime.now(timezone.utc)
-    vix = fetch_vix()
-    fg = fetch_fear_greed()
+    today_str = now.strftime("%Y-%m-%d")
 
-    if vix is None and fg is None:
-        print("Both fetches failed — skipping update.")
+    vix, _, vix_hist = fetch_yahoo("^VIX")
+    voo, voo_prev, voo_hist = fetch_yahoo("VOO")
+    fg, fg_hist = fetch_fear_greed()
+
+    if vix is None and voo is None and fg is None:
+        print("All fetches failed — skipping update.")
         return
 
+    # Previous close = second-to-last bar in the history (yesterday's close), not Yahoo's
+    # chartPreviousClose which references the close before the entire 3-month range.
+    voo_prev = voo_hist[-2][1] if len(voo_hist) >= 2 else voo_prev
+    voo_change_pct = None
+    if voo is not None and voo_prev:
+        voo_change_pct = round((voo - voo_prev) / voo_prev * 100, 2)
+
     existing = load_existing()
+    by_date = {h["date"]: dict(h) for h in existing.get("history", [])}
+
+    for date_str, val in vix_hist:
+        by_date.setdefault(date_str, {"date": date_str})["vix"] = val
+    for date_str, val in voo_hist:
+        by_date.setdefault(date_str, {"date": date_str})["voo"] = val
+    for date_str, val in fg_hist:
+        by_date.setdefault(date_str, {"date": date_str})["fear_greed"] = val
+
+    today_row = by_date.setdefault(today_str, {"date": today_str})
+    if vix is not None:
+        today_row["vix"] = vix
+    if voo is not None:
+        today_row["voo"] = voo
+    if fg is not None:
+        today_row["fear_greed"] = fg
+
+    history = sorted(by_date.values(), key=lambda x: x["date"])[-HISTORY_DAYS:]
 
     current = {
         "vix": vix,
+        "voo": voo,
+        "voo_prev_close": voo_prev,
+        "voo_change_pct": voo_change_pct,
         "fear_greed": fg,
         "updated_utc": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
 
-    # Keep up to 90 days of daily snapshots
-    history = existing.get("history", [])
-    today_str = now.strftime("%Y-%m-%d")
-    # Replace today's entry if it exists, otherwise append
-    history = [h for h in history if h.get("date") != today_str]
-    history.append({"date": today_str, "vix": vix, "fear_greed": fg})
-    history = history[-90:]
-
-    output = {"current": current, "history": history}
-
     with open(DATA_FILE, "w") as f:
-        json.dump(output, f, indent=2)
+        json.dump({"current": current, "history": history}, f, indent=2)
 
-    print(f"Updated: VIX={vix}, F&G={fg} at {current['updated_utc']}")
+    print(f"Updated: VIX={vix}, VOO={voo} ({voo_change_pct}%), F&G={fg}, history={len(history)} days")
 
 
 if __name__ == "__main__":
