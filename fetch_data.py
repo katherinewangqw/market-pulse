@@ -8,7 +8,7 @@ import urllib.request
 from datetime import datetime, timezone
 
 DATA_FILE = "data.json"
-HISTORY_DAYS = 90
+HISTORY_DAYS = 365
 
 YAHOO_HEADERS = {"User-Agent": "Mozilla/5.0"}
 CNN_HEADERS = {
@@ -23,7 +23,7 @@ CNN_HEADERS = {
 
 def fetch_yahoo(symbol):
     """Fetch a Yahoo symbol's recent daily history. Returns (current, prev_close, [(date, close), ...])."""
-    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=3mo&interval=1d"
+    url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=1y&interval=1d"
     req = urllib.request.Request(url, headers=YAHOO_HEADERS)
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
@@ -81,19 +81,12 @@ def main():
     today_str = now.strftime("%Y-%m-%d")
 
     vix, _, vix_hist = fetch_yahoo("^VIX")
-    voo, voo_prev, voo_hist = fetch_yahoo("VOO")
+    voo, _, voo_hist = fetch_yahoo("VOO")
     fg, fg_hist = fetch_fear_greed()
 
     if vix is None and voo is None and fg is None:
         print("All fetches failed — skipping update.")
         return
-
-    # Previous close = second-to-last bar in the history (yesterday's close), not Yahoo's
-    # chartPreviousClose which references the close before the entire 3-month range.
-    voo_prev = voo_hist[-2][1] if len(voo_hist) >= 2 else voo_prev
-    voo_change_pct = None
-    if voo is not None and voo_prev:
-        voo_change_pct = round((voo - voo_prev) / voo_prev * 100, 2)
 
     existing = load_existing()
     by_date = {h["date"]: dict(h) for h in existing.get("history", [])}
@@ -118,8 +111,6 @@ def main():
     current = {
         "vix": vix,
         "voo": voo,
-        "voo_prev_close": voo_prev,
-        "voo_change_pct": voo_change_pct,
         "fear_greed": fg,
         "updated_utc": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
     }
@@ -127,7 +118,7 @@ def main():
     with open(DATA_FILE, "w") as f:
         json.dump({"current": current, "history": history}, f, indent=2)
 
-    print(f"Updated: VIX={vix}, VOO={voo} ({voo_change_pct}%), F&G={fg}, history={len(history)} days")
+    print(f"Updated: VIX={vix}, VOO={voo}, F&G={fg}, history={len(history)} days")
 
 
 if __name__ == "__main__":

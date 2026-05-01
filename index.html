@@ -33,6 +33,15 @@
   body { font-family: -apple-system, BlinkMacSystemFont, 'SF Pro', 'Segoe UI', system-ui, sans-serif;
     background: var(--bg); color: var(--tx); padding: 16px; max-width: 480px; margin: 0 auto;
     -webkit-font-smoothing: antialiased; }
+  .playbooks-wrap { display: grid; grid-template-columns: 1fr; gap: 0; }
+
+  @media (min-width: 720px) {
+    body { max-width: 880px; padding: 24px; }
+    .cards { grid-template-columns: 1fr 1fr; gap: 14px; }
+    .trend canvas { height: 240px; }
+    .playbooks-wrap { grid-template-columns: 1fr 1fr; gap: 12px; }
+    .playbooks-wrap .playbook { margin-bottom: 0; }
+  }
 
   .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; }
   .header h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
@@ -44,7 +53,6 @@
   .card .label { font-size: 11px; color: var(--tx2); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
   .card .value { font-size: 44px; font-weight: 700; line-height: 1; margin: 6px 0; letter-spacing: -0.03em; }
   .badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 6px; }
-  .badge-cn { display: block; font-size: 12px; font-weight: 500; color: var(--tx2); margin-top: 4px; }
 
   .bar-wrap { margin-top: 10px; }
   .bar-track { height: 6px; border-radius: 3px; display: flex; overflow: hidden; position: relative; }
@@ -62,16 +70,9 @@
     padding: 2px 6px; border-radius: 4px; text-align: center; }
   .now.show { display: inline-block; }
 
-  .voo-card { background: var(--bg2); border: 1px solid var(--bd); border-radius: 14px; padding: 14px 16px; margin-bottom: 16px;
-    display: flex; justify-content: space-between; align-items: center; gap: 12px; }
-  .voo-card .label { font-size: 11px; color: var(--tx2); text-transform: uppercase; letter-spacing: 0.05em; font-weight: 500; }
-  .voo-card .voo-val { font-size: 28px; font-weight: 700; line-height: 1; margin-top: 4px; letter-spacing: -0.02em; }
-  .voo-change { text-align: right; }
-  .voo-change-pct { font-size: 18px; font-weight: 700; }
-  .voo-change-abs { font-size: 11px; color: var(--tx2); display: block; margin-top: 2px; }
-
   .trend { background: var(--bg2); border: 1px solid var(--bd); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
-  .trend canvas { width: 100%; height: 140px; }
+  .chart-wrap { position: relative; }
+  .trend canvas { width: 100%; height: 170px; display: block; touch-action: none; }
   .trend-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
   .range-toggle { display: flex; gap: 4px; }
   .range-toggle button { font: inherit; font-size: 10px; font-weight: 600; padding: 3px 8px; border-radius: 6px;
@@ -79,8 +80,18 @@
   .range-toggle button.active { background: var(--bg3); color: var(--tx); border-color: var(--tx2); }
   .legend { display: flex; gap: 12px; font-size: 10px; color: var(--tx2); margin-top: 6px; }
   .legend-item { display: flex; align-items: center; gap: 4px; }
-  .legend-dot { width: 8px; height: 8px; border-radius: 2px; }
+  .legend-line { display: inline-block; width: 16px; height: 0; border-top: 2px solid; }
+  .legend-line.dashed { border-top-style: dashed; }
+  .legend-line.dotted { border-top-style: dotted; border-top-width: 3px; }
   .trend-note { font-size: 10px; color: var(--tx3); margin-top: 4px; line-height: 1.4; }
+  .tooltip { position: absolute; pointer-events: none; background: var(--bg2); border: 1px solid var(--bd);
+    border-radius: 8px; padding: 6px 8px; font-size: 11px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    white-space: nowrap; opacity: 0; transition: opacity 0.1s; z-index: 5; }
+  .tooltip.show { opacity: 1; }
+  .tooltip .tt-date { font-weight: 600; color: var(--tx); margin-bottom: 3px; }
+  .tooltip .tt-row { display: flex; justify-content: space-between; gap: 10px; line-height: 1.4; }
+  .tooltip .tt-label { color: var(--tx2); }
+  .tooltip .tt-val { font-weight: 600; }
 
   .footer { text-align: center; font-size: 10px; color: var(--tx3); padding: 8px 0; }
 
@@ -113,7 +124,6 @@
       <div class="label">VIX</div>
       <div class="value" id="vix-val" style="color:var(--green)">—</div>
       <span class="badge" id="vix-badge">—</span>
-      <span class="badge-cn" id="vix-cn"></span>
       <div class="bar-wrap">
         <div style="position:relative">
           <div class="bar-track">
@@ -132,7 +142,6 @@
       <div class="label">Fear & Greed</div>
       <div class="value" id="fg-val" style="color:var(--amber)">—</div>
       <span class="badge" id="fg-badge">—</span>
-      <span class="badge-cn" id="fg-cn"></span>
       <div class="bar-wrap">
         <div style="position:relative">
           <div class="bar-track">
@@ -149,52 +158,48 @@
     </div>
   </div>
 
-  <div class="voo-card">
-    <div>
-      <div class="label">VOO · S&P 500 ETF</div>
-      <div class="voo-val" id="voo-val">—</div>
-    </div>
-    <div class="voo-change">
-      <span class="voo-change-pct" id="voo-change-pct">—</span>
-      <span class="voo-change-abs" id="voo-change-abs"></span>
-    </div>
-  </div>
-
-  <div class="playbook">
-    <div class="pb-title">VIX Playbook</div>
-    <div class="pb-row" id="vr1"><span style="color:var(--green)">&lt; 12</span><span>极度乐观</span><span>谨慎追高，保持警觉</span><span><span class="now" id="vn1">NOW</span></span></div>
-    <div class="pb-row" id="vr2"><span style="color:var(--green)">12–20</span><span>正常区间</span><span>常规定投，保持节奏</span><span><span class="now" id="vn2">NOW</span></span></div>
-    <div class="pb-row" id="vr3"><span style="color:var(--amber)">20–30</span><span>恐慌上升</span><span>加大定投，分批买入</span><span><span class="now" id="vn3">NOW</span></span></div>
-    <div class="pb-row" id="vr4"><span style="color:var(--red)">30–50</span><span>市场恐慌</span><span>加倍定投，逢低布局</span><span><span class="now" id="vn4">NOW</span></span></div>
-    <div class="pb-row" id="vr5"><span style="color:var(--red)">&gt; 50</span><span>极度恐慌</span><span>黄金机会，大胆抄底</span><span><span class="now" id="vn5">NOW</span></span></div>
-  </div>
-
-  <div class="playbook">
-    <div class="pb-title">Fear & Greed Playbook</div>
-    <div class="pb-row" id="fr1"><span style="color:var(--red)">0–24</span><span>极度恐惧</span><span>黄金机会，加倍买入</span><span><span class="now" id="fn1">NOW</span></span></div>
-    <div class="pb-row" id="fr2"><span style="color:var(--red)">25–44</span><span>恐惧</span><span>加大定投，分批布局</span><span><span class="now" id="fn2">NOW</span></span></div>
-    <div class="pb-row" id="fr3"><span style="color:var(--purple)">45–55</span><span>中性</span><span>常规定投，保持节奏</span><span><span class="now" id="fn3">NOW</span></span></div>
-    <div class="pb-row" id="fr4"><span style="color:var(--amber)">56–75</span><span>贪婪</span><span>谨慎追高，控制仓位</span><span><span class="now" id="fn4">NOW</span></span></div>
-    <div class="pb-row" id="fr5"><span style="color:var(--amber)">76–100</span><span>极度贪婪</span><span>警惕回调，部分止盈</span><span><span class="now" id="fn5">NOW</span></span></div>
-  </div>
-
   <div class="trend" id="trend-section" style="display:none">
     <div class="trend-head">
       <div class="pb-title" style="margin:0">Trend comparison</div>
       <div class="range-toggle" id="range-toggle">
-        <button data-range="30" class="active">30d</button>
-        <button data-range="60">60d</button>
-        <button data-range="90">90d</button>
+        <button data-range="30" class="active">1M</button>
+        <button data-range="90">3M</button>
+        <button data-range="180">6M</button>
+        <button data-range="365">1Y</button>
       </div>
     </div>
-    <canvas id="trend-chart"></canvas>
-    <div class="legend">
-      <span class="legend-item"><span class="legend-dot" style="background:var(--red)"></span>VIX</span>
-      <span class="legend-item"><span class="legend-dot" style="background:var(--amber)"></span>F&amp;G</span>
-      <span class="legend-item"><span class="legend-dot" style="background:var(--green)"></span>VOO</span>
+    <div class="chart-wrap">
+      <canvas id="trend-chart"></canvas>
+      <div class="tooltip" id="trend-tooltip"></div>
     </div>
-    <div class="trend-note">Each line normalized to its own min/max in the visible window — compare shape, not scale.</div>
+    <div class="legend">
+      <span class="legend-item"><span class="legend-line" style="border-color:var(--green)"></span>VOO</span>
+      <span class="legend-item"><span class="legend-line dashed" style="border-color:var(--red)"></span>VIX</span>
+      <span class="legend-item"><span class="legend-line dotted" style="border-color:var(--amber)"></span>F&amp;G</span>
+    </div>
+    <div class="trend-note">Each line normalized to its own min/max in the visible window — compare shape, not scale. Hover or tap the chart for values.</div>
   </div>
+
+  <div class="playbooks-wrap">
+    <div class="playbook">
+      <div class="pb-title">VIX Playbook</div>
+      <div class="pb-row" id="vr1"><span style="color:var(--green)">&lt; 12</span><span>极度乐观</span><span>谨慎追高，保持警觉</span><span><span class="now" id="vn1">NOW</span></span></div>
+      <div class="pb-row" id="vr2"><span style="color:var(--green)">12–20</span><span>正常区间</span><span>常规定投，保持节奏</span><span><span class="now" id="vn2">NOW</span></span></div>
+      <div class="pb-row" id="vr3"><span style="color:var(--amber)">20–30</span><span>恐慌上升</span><span>加大定投，分批买入</span><span><span class="now" id="vn3">NOW</span></span></div>
+      <div class="pb-row" id="vr4"><span style="color:var(--red)">30–50</span><span>市场恐慌</span><span>加倍定投，逢低布局</span><span><span class="now" id="vn4">NOW</span></span></div>
+      <div class="pb-row" id="vr5"><span style="color:var(--red)">&gt; 50</span><span>极度恐慌</span><span>黄金机会，大胆抄底</span><span><span class="now" id="vn5">NOW</span></span></div>
+    </div>
+
+    <div class="playbook">
+      <div class="pb-title">Fear & Greed Playbook</div>
+      <div class="pb-row" id="fr1"><span style="color:var(--red)">0–24</span><span>极度恐惧</span><span>黄金机会，加倍买入</span><span><span class="now" id="fn1">NOW</span></span></div>
+      <div class="pb-row" id="fr2"><span style="color:var(--red)">25–44</span><span>恐惧</span><span>加大定投，分批布局</span><span><span class="now" id="fn2">NOW</span></span></div>
+      <div class="pb-row" id="fr3"><span style="color:var(--purple)">45–55</span><span>中性</span><span>常规定投，保持节奏</span><span><span class="now" id="fn3">NOW</span></span></div>
+      <div class="pb-row" id="fr4"><span style="color:var(--amber)">56–75</span><span>贪婪</span><span>谨慎追高，控制仓位</span><span><span class="now" id="fn4">NOW</span></span></div>
+      <div class="pb-row" id="fr5"><span style="color:var(--amber)">76–100</span><span>极度贪婪</span><span>警惕回调，部分止盈</span><span><span class="now" id="fn5">NOW</span></span></div>
+    </div>
+  </div>
+
 </template>
 
 <script>
@@ -206,7 +211,7 @@ $('date-display').textContent = today.toLocaleDateString('zh-CN',{year:'numeric'
 
 function vixZone(v) {
   if (v < 12) return { en:'Extreme Low', cn:'极度乐观', strat:'谨慎追高 · 保持警觉', color:'--green', idx:1, pct:(v/60)*100 };
-  if (v < 20) return { en:'Normal', cn:'正常波动', strat:'常规定投 · 保持节奏', color:'--green', idx:2, pct:(v/60)*100 };
+  if (v < 20) return { en:'Normal', cn:'正常区间', strat:'常规定投 · 保持节奏', color:'--green', idx:2, pct:(v/60)*100 };
   if (v < 30) return { en:'Elevated', cn:'恐慌上升', strat:'加大定投 · 分批买入', color:'--amber', idx:3, pct:(v/60)*100 };
   if (v < 50) return { en:'High Fear', cn:'市场恐慌', strat:'加倍定投 · 逢低布局', color:'--red', idx:4, pct:(v/60)*100 };
   return { en:'Extreme Fear', cn:'极度恐慌', strat:'黄金机会 · 大胆抄底', color:'--red', idx:5, pct: Math.min(95,(v/60)*100) };
@@ -226,7 +231,7 @@ function render(data) {
   main.innerHTML = '';
   main.appendChild(tpl.content.cloneNode(true));
 
-  const { vix, fear_greed, voo, voo_change_pct, voo_prev_close, updated_utc } = data.current;
+  const { vix, fear_greed, updated_utc } = data.current;
 
   if (updated_utc) {
     const d = new Date(updated_utc);
@@ -241,7 +246,6 @@ function render(data) {
     $('vix-badge').textContent = vz.en;
     $('vix-badge').style.background = 'var(' + vz.color + '-bg)';
     $('vix-badge').style.color = 'var(' + vz.color + '-tx)';
-    $('vix-cn').textContent = vz.cn;
     $('vix-marker').style.left = Math.max(3, Math.min(97, vz.pct)) + '%';
     for (let i = 1; i <= 5; i++) {
       $('vr' + i).classList.toggle('active', i === vz.idx);
@@ -256,7 +260,6 @@ function render(data) {
     $('fg-badge').textContent = fz.en;
     $('fg-badge').style.background = 'var(' + fz.color + '-bg)';
     $('fg-badge').style.color = 'var(' + fz.color + '-tx)';
-    $('fg-cn').textContent = fz.cn;
     $('fg-marker').style.left = Math.max(3, Math.min(97, fz.pct)) + '%';
     for (let i = 1; i <= 5; i++) {
       $('fr' + i).classList.toggle('active', i === fz.idx);
@@ -264,85 +267,178 @@ function render(data) {
     }
   }
 
-  if (voo != null) {
-    $('voo-val').textContent = '$' + voo.toFixed(2);
-    const pct = voo_change_pct;
-    if (pct != null) {
-      const up = pct >= 0;
-      const sign = up ? '+' : '';
-      $('voo-change-pct').textContent = sign + pct.toFixed(2) + '%';
-      $('voo-change-pct').style.color = up ? 'var(--green)' : 'var(--red)';
-      if (voo_prev_close != null) {
-        const absChg = voo - voo_prev_close;
-        $('voo-change-abs').textContent = sign + '$' + absChg.toFixed(2);
-      }
-    }
-  }
-
-  // Trend comparison: 3-line overlay, each normalized to its own range in the window
-  const fullHist = data.history || [];
+  // Trend comparison: 3-line overlay, each normalized to its own range. Interactive on hover/tap.
+  // Filter to trading days (VIX present) so F&G doesn't draw smoothly across weekends/holidays
+  // while VIX/VOO have visual gaps.
+  const fullHist = (data.history || []).filter(d => d.vix != null || d.voo != null);
   if (fullHist.length >= 2) {
     $('trend-section').style.display = '';
-    const drawChart = (days) => {
-      const hist = fullHist.slice(-days);
-      const canvas = $('trend-chart');
-      const ctx = canvas.getContext('2d');
+    const canvas = $('trend-chart');
+    const tooltip = $('trend-tooltip');
+    const ctx = canvas.getContext('2d');
+    const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    const PAD_L = 16, PAD_R = 16, PAD_T = 16, PAD_B = 32;
+    const SERIES = [
+      { key: 'voo',        label: 'VOO', colorVar: '--green', dash: null,    width: 2.5, fmt: v => '$' + v.toFixed(2) },
+      { key: 'vix',        label: 'VIX', colorVar: '--red',   dash: [5, 4],  width: 1.8, fmt: v => v.toFixed(2) },
+      { key: 'fear_greed', label: 'F&G', colorVar: '--amber', dash: [1, 3],  width: 1.8, fmt: v => Math.round(v) },
+    ];
+
+    let currentRange = 30;
+    let hist = [];
+    let viewW = 0, viewH = 0;
+
+    const xForIdx = i => (i / Math.max(hist.length - 1, 1)) * (viewW - PAD_L - PAD_R) + PAD_L;
+    const yForVal = (v, min, max) => {
+      const range = max - min || 1;
+      return viewH - PAD_B - ((v - min) / range) * (viewH - PAD_T - PAD_B);
+    };
+
+    const seriesStats = () => SERIES.map(s => {
+      const vals = hist.map(d => d[s.key] != null ? d[s.key] : null);
+      const valid = vals.filter(v => v != null);
+      const min = valid.length ? Math.min(...valid) : 0;
+      const max = valid.length ? Math.max(...valid) : 1;
+      return { ...s, vals, min, max, valid };
+    });
+
+    const drawChart = (hoverIdx) => {
+      hist = fullHist.slice(-currentRange);
       const dpr = window.devicePixelRatio || 1;
-      const w = canvas.offsetWidth, h = 140;
-      canvas.width = w * dpr; canvas.height = h * dpr;
-      canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+      viewW = canvas.offsetWidth;
+      viewH = canvas.offsetHeight || 170;
+      canvas.width = viewW * dpr; canvas.height = viewH * dpr;
       ctx.setTransform(1, 0, 0, 1, 0, 0);
       ctx.scale(dpr, dpr);
-      ctx.clearRect(0, 0, w, h);
+      ctx.clearRect(0, 0, viewW, viewH);
 
       const isDark = window.matchMedia('(prefers-color-scheme:dark)').matches;
-      ctx.fillStyle = isDark ? '#2e2e2e' : '#e5e7eb';
-      ctx.fillRect(16, h / 2, w - 32, 0.5);
+      const axisColor = isDark ? '#3a3a3a' : '#e5e7eb';
+      const labelColor = cssVar('--tx3');
 
-      const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+      // baseline
+      ctx.fillStyle = axisColor;
+      ctx.fillRect(PAD_L, viewH - PAD_B, viewW - PAD_L - PAD_R, 0.5);
 
-      const drawSeries = (key, colorVar) => {
-        const vals = hist.map(d => d[key] != null ? d[key] : null);
-        const valid = vals.filter(v => v != null);
-        if (valid.length < 2) return;
-        const min = Math.min(...valid), max = Math.max(...valid);
-        const range = max - min || 1;
-        const color = cssVar(colorVar);
+      // x-axis date labels (4-5 evenly spaced)
+      const labelCount = viewW < 360 ? 4 : 5;
+      ctx.fillStyle = labelColor;
+      ctx.font = '10px -apple-system, sans-serif';
+      ctx.textAlign = 'center';
+      const showYear = currentRange >= 180;
+      for (let i = 0; i < labelCount; i++) {
+        const idx = Math.round(i * (hist.length - 1) / (labelCount - 1));
+        const d = hist[idx]?.date;
+        if (!d) continue;
+        const dt = new Date(d + 'T00:00:00');
+        const txt = showYear
+          ? dt.toLocaleDateString('en-US', { month: 'short', year: '2-digit' })
+          : dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const x = xForIdx(idx);
+        const tx = Math.max(PAD_L + 12, Math.min(viewW - PAD_R - 12, x));
+        ctx.fillText(txt, tx, viewH - PAD_B + 14);
+      }
+      ctx.textAlign = 'start';
+
+      const stats = seriesStats();
+
+      // hover guide line (drawn behind the data lines)
+      if (hoverIdx != null && hist[hoverIdx]) {
+        const x = xForIdx(hoverIdx);
+        ctx.setLineDash([2, 3]);
+        ctx.strokeStyle = labelColor; ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = 'round';
-        let started = false;
-        let lastIdx = -1;
-        vals.forEach((v, i) => {
+        ctx.moveTo(x, PAD_T);
+        ctx.lineTo(x, viewH - PAD_B);
+        ctx.stroke();
+        ctx.setLineDash([]);
+      }
+
+      stats.forEach(s => {
+        if (s.valid.length < 2) return;
+        const color = cssVar(s.colorVar);
+        ctx.setLineDash(s.dash || []);
+        ctx.lineCap = s.dash && s.dash[0] === 1 ? 'round' : 'butt';
+        ctx.beginPath();
+        ctx.strokeStyle = color; ctx.lineWidth = s.width; ctx.lineJoin = 'round';
+        let started = false, lastIdx = -1;
+        s.vals.forEach((v, i) => {
           if (v == null) { started = false; return; }
-          const x = (i / (vals.length - 1)) * (w - 32) + 16;
-          const y = h - 16 - ((v - min) / range) * (h - 32);
-          if (!started) { ctx.moveTo(x, y); started = true; }
-          else ctx.lineTo(x, y);
+          const x = xForIdx(i), y = yForVal(v, s.min, s.max);
+          if (!started) { ctx.moveTo(x, y); started = true; } else { ctx.lineTo(x, y); }
           lastIdx = i;
         });
         ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.lineCap = 'butt';
         if (lastIdx >= 0) {
-          const x = (lastIdx / (vals.length - 1)) * (w - 32) + 16;
-          const y = h - 16 - ((vals[lastIdx] - min) / range) * (h - 32);
+          const x = xForIdx(lastIdx), y = yForVal(s.vals[lastIdx], s.min, s.max);
           ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
         }
-      };
-
-      drawSeries('vix', '--red');
-      drawSeries('fear_greed', '--amber');
-      drawSeries('voo', '--green');
+        // hover dot
+        if (hoverIdx != null && s.vals[hoverIdx] != null) {
+          const x = xForIdx(hoverIdx), y = yForVal(s.vals[hoverIdx], s.min, s.max);
+          ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+          ctx.beginPath(); ctx.arc(x, y, 4, 0, Math.PI * 2);
+          ctx.strokeStyle = cssVar('--bg2'); ctx.lineWidth = 1.5; ctx.stroke();
+        }
+      });
     };
 
-    let currentRange = 30;
-    drawChart(currentRange);
+    const showTooltip = (idx, pointerX) => {
+      const row = hist[idx];
+      if (!row) return;
+      const dt = new Date(row.date + 'T00:00:00');
+      const dateStr = dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+      let html = '<div class="tt-date">' + dateStr + '</div>';
+      SERIES.forEach(s => {
+        const v = row[s.key];
+        const valStr = v != null ? s.fmt(v) : '—';
+        const color = cssVar(s.colorVar);
+        html += '<div class="tt-row"><span class="tt-label" style="color:' + color + '">' + s.label + '</span><span class="tt-val">' + valStr + '</span></div>';
+      });
+      tooltip.innerHTML = html;
+      tooltip.classList.add('show');
+      // position: clamp inside chart-wrap
+      const wrap = tooltip.parentElement.getBoundingClientRect();
+      const tt = tooltip.getBoundingClientRect();
+      let left = pointerX + 12;
+      if (left + tt.width > wrap.width - 4) left = pointerX - tt.width - 12;
+      if (left < 4) left = 4;
+      tooltip.style.left = left + 'px';
+      tooltip.style.top = '4px';
+    };
+
+    const hideTooltip = () => tooltip.classList.remove('show');
+
+    const handlePointer = clientX => {
+      const rect = canvas.getBoundingClientRect();
+      const x = clientX - rect.left;
+      if (hist.length === 0) return;
+      const innerW = viewW - PAD_L - PAD_R;
+      const ratio = (x - PAD_L) / innerW;
+      let idx = Math.round(ratio * (hist.length - 1));
+      idx = Math.max(0, Math.min(hist.length - 1, idx));
+      drawChart(idx);
+      showTooltip(idx, x);
+    };
+
+    canvas.addEventListener('mousemove', e => handlePointer(e.clientX));
+    canvas.addEventListener('mouseleave', () => { drawChart(); hideTooltip(); });
+    canvas.addEventListener('touchstart', e => { if (e.touches[0]) handlePointer(e.touches[0].clientX); }, { passive: true });
+    canvas.addEventListener('touchmove', e => { if (e.touches[0]) { handlePointer(e.touches[0].clientX); e.preventDefault(); } }, { passive: false });
+    canvas.addEventListener('touchend', () => { drawChart(); hideTooltip(); });
+
+    drawChart();
     $('range-toggle').addEventListener('click', e => {
       const btn = e.target.closest('button[data-range]');
       if (!btn) return;
       currentRange = parseInt(btn.dataset.range, 10);
       $('range-toggle').querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
-      drawChart(currentRange);
+      hideTooltip();
+      drawChart();
     });
-    window.addEventListener('resize', () => drawChart(currentRange));
+    window.addEventListener('resize', () => { hideTooltip(); drawChart(); });
   }
 }
 
