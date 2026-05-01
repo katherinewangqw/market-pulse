@@ -1,8 +1,14 @@
 {
   "current": {
-    "vix": null,
+    "vix": 17.03,
     "fear_greed": null,
-    "updated_utc": null
+    "updated_utc": "2026-05-01T16:40:42Z"
   },
-  "history": []
+  "history": [
+    {
+      "date": "2026-05-01",
+      "vix": 17.03,
+      "fear_greed": null
+    }
+  ]
 }
