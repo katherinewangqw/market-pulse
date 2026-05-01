@@ -264,50 +264,85 @@ function render(data) {
     }
   }
 
-  // Mini trend chart (canvas, no dependencies)
-  const hist = (data.history || []).slice(-30);
-  if (hist.length >= 2) {
-    $('trend-section').style.display = '';
-    const canvas = $('trend-chart');
-    const ctx = canvas.getContext('2d');
-    const dpr = window.devicePixelRatio || 1;
-    const w = canvas.offsetWidth, h = 120;
-    canvas.width = w * dpr; canvas.height = h * dpr;
-    canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
-    ctx.scale(dpr, dpr);
-
-    const vixVals = hist.map(d => d.vix).filter(v => v != null);
-    const fgVals = hist.map(d => d.fear_greed).filter(v => v != null);
-
-    function drawLine(vals, color, minV, maxV) {
-      if (vals.length < 2) return;
-      const range = maxV - minV || 1;
-      ctx.beginPath();
-      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = 'round';
-      vals.forEach((v, i) => {
-        const x = (i / (vals.length - 1)) * (w - 32) + 16;
-        const y = h - 16 - ((v - minV) / range) * (h - 32);
-        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-      });
-      ctx.stroke();
-      // endpoint dot
-      const lastX = w - 16, lastY = h - 16 - ((vals[vals.length-1] - minV) / range) * (h - 32);
-      ctx.beginPath(); ctx.arc(lastX, lastY, 3, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+  if (voo != null) {
+    $('voo-val').textContent = '$' + voo.toFixed(2);
+    const pct = voo_change_pct;
+    if (pct != null) {
+      const up = pct >= 0;
+      const sign = up ? '+' : '';
+      $('voo-change-pct').textContent = sign + pct.toFixed(2) + '%';
+      $('voo-change-pct').style.color = up ? 'var(--green)' : 'var(--red)';
+      if (voo_prev_close != null) {
+        const absChg = voo - voo_prev_close;
+        $('voo-change-abs').textContent = sign + '$' + absChg.toFixed(2);
+      }
     }
+  }
 
-    const isDark = window.matchMedia('(prefers-color-scheme:dark)').matches;
-    ctx.fillStyle = isDark ? '#333' : '#e5e7eb';
-    ctx.fillRect(16, h / 2, w - 32, 0.5);
+  // Trend comparison: 3-line overlay, each normalized to its own range in the window
+  const fullHist = data.history || [];
+  if (fullHist.length >= 2) {
+    $('trend-section').style.display = '';
+    const drawChart = (days) => {
+      const hist = fullHist.slice(-days);
+      const canvas = $('trend-chart');
+      const ctx = canvas.getContext('2d');
+      const dpr = window.devicePixelRatio || 1;
+      const w = canvas.offsetWidth, h = 140;
+      canvas.width = w * dpr; canvas.height = h * dpr;
+      canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, w, h);
 
-    drawLine(vixVals, isDark ? '#4ade80' : '#16a34a', 0, 60);
-    drawLine(fgVals, isDark ? '#fbbf24' : '#d97706', 0, 100);
+      const isDark = window.matchMedia('(prefers-color-scheme:dark)').matches;
+      ctx.fillStyle = isDark ? '#2e2e2e' : '#e5e7eb';
+      ctx.fillRect(16, h / 2, w - 32, 0.5);
 
-    // Legend
-    ctx.font = '10px -apple-system, sans-serif';
-    ctx.fillStyle = isDark ? '#4ade80' : '#16a34a';
-    ctx.fillText('VIX', 16, 12);
-    ctx.fillStyle = isDark ? '#fbbf24' : '#d97706';
-    ctx.fillText('F&G', 50, 12);
+      const cssVar = name => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
+      const drawSeries = (key, colorVar) => {
+        const vals = hist.map(d => d[key] != null ? d[key] : null);
+        const valid = vals.filter(v => v != null);
+        if (valid.length < 2) return;
+        const min = Math.min(...valid), max = Math.max(...valid);
+        const range = max - min || 1;
+        const color = cssVar(colorVar);
+        ctx.beginPath();
+        ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+        let started = false;
+        let lastIdx = -1;
+        vals.forEach((v, i) => {
+          if (v == null) { started = false; return; }
+          const x = (i / (vals.length - 1)) * (w - 32) + 16;
+          const y = h - 16 - ((v - min) / range) * (h - 32);
+          if (!started) { ctx.moveTo(x, y); started = true; }
+          else ctx.lineTo(x, y);
+          lastIdx = i;
+        });
+        ctx.stroke();
+        if (lastIdx >= 0) {
+          const x = (lastIdx / (vals.length - 1)) * (w - 32) + 16;
+          const y = h - 16 - ((vals[lastIdx] - min) / range) * (h - 32);
+          ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill();
+        }
+      };
+
+      drawSeries('vix', '--red');
+      drawSeries('fear_greed', '--amber');
+      drawSeries('voo', '--green');
+    };
+
+    let currentRange = 30;
+    drawChart(currentRange);
+    $('range-toggle').addEventListener('click', e => {
+      const btn = e.target.closest('button[data-range]');
+      if (!btn) return;
+      currentRange = parseInt(btn.dataset.range, 10);
+      $('range-toggle').querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+      drawChart(currentRange);
+    });
+    window.addEventListener('resize', () => drawChart(currentRange));
   }
 }
 
@@ -315,7 +350,7 @@ function render(data) {
 fetch('data.json?' + Date.now())
   .then(r => { if (!r.ok) throw new Error(r.status); return r.json(); })
   .then(data => {
-    if (data.current.vix == null && data.current.fear_greed == null) {
+    if (data.current.vix == null && data.current.fear_greed == null && data.current.voo == null) {
       $('main-content').innerHTML = '<div class="error">No data yet. Run the GitHub Action manually to seed initial data.</div>';
     } else {
       render(data);
