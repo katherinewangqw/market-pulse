@@ -1,9 +1,9 @@
 {
   "current": {
-    "vix": 15.81,
-    "voo": 692.54,
-    "fear_greed": 47.8,
-    "updated_utc": "2026-07-16T15:15:38Z"
+    "vix": 16.73,
+    "voo": 690.14,
+    "fear_greed": 41.7,
+    "updated_utc": "2026-07-16T21:33:10Z"
   },
   "history": [
     {
@@ -17918,31 +17918,31 @@
       "date": "2026-05-18",
       "vix": 17.82,
       "voo": 678.91,
-      "fear_greed": 61.6
+      "fear_greed": 62.1
     },
     {
       "date": "2026-05-19",
       "vix": 18.06,
       "voo": 674.59,
-      "fear_greed": 59.4
+      "fear_greed": 59.3
     },
     {
       "date": "2026-05-20",
       "vix": 17.44,
       "voo": 681.57,
-      "fear_greed": 60.3
+      "fear_greed": 60.5
     },
     {
       "date": "2026-05-21",
       "vix": 16.76,
       "voo": 682.84,
-      "fear_greed": 58.1
+      "fear_greed": 57.5
     },
     {
       "date": "2026-05-22",
       "vix": 16.7,
       "voo": 685.55,
-      "fear_greed": 59.0
+      "fear_greed": 58.2
     },
     {
       "date": "2026-05-25",
@@ -17954,7 +17954,7 @@
       "date": "2026-05-26",
       "vix": 17.01,
       "voo": 690.01,
-      "fear_greed": 60.9
+      "fear_greed": 59.8
     },
     {
       "date": "2026-05-27",
@@ -17966,97 +17966,97 @@
       "date": "2026-05-28",
       "vix": 15.74,
       "voo": 693.91,
-      "fear_greed": 60.1
+      "fear_greed": 60.7
     },
     {
       "date": "2026-05-29",
       "vix": 15.32,
       "voo": 695.49,
-      "fear_greed": 59.5
+      "fear_greed": 60.5
     },
     {
       "date": "2026-06-01",
       "vix": 16.05,
       "voo": 697.3,
-      "fear_greed": 56.5
+      "fear_greed": 59.5
     },
     {
       "date": "2026-06-02",
       "vix": 15.77,
       "voo": 698.26,
-      "fear_greed": 56.1
+      "fear_greed": 57.0
     },
     {
       "date": "2026-06-03",
       "vix": 16.06,
       "voo": 693.36,
-      "fear_greed": 53.0
+      "fear_greed": 54.6
     },
     {
       "date": "2026-06-04",
       "vix": 15.4,
       "voo": 696.06,
-      "fear_greed": 53.9
+      "fear_greed": 54.6
     },
     {
       "date": "2026-06-05",
       "vix": 21.51,
       "voo": 678.0,
-      "fear_greed": 41.8
+      "fear_greed": 41.9
     },
     {
       "date": "2026-06-08",
       "vix": 18.92,
       "voo": 679.68,
-      "fear_greed": 39.9
+      "fear_greed": 39.4
     },
     {
       "date": "2026-06-09",
       "vix": 19.87,
       "voo": 677.7,
-      "fear_greed": 32.5
+      "fear_greed": 33.8
     },
     {
       "date": "2026-06-10",
       "vix": 22.22,
       "voo": 667.05,
-      "fear_greed": 26.9
+      "fear_greed": 27.3
     },
     {
       "date": "2026-06-11",
       "vix": 19.44,
       "voo": 678.23,
-      "fear_greed": 31.6
+      "fear_greed": 29.7
     },
     {
       "date": "2026-06-12",
       "vix": 17.68,
       "voo": 681.95,
-      "fear_greed": 35.5
+      "fear_greed": 33.5
     },
     {
       "date": "2026-06-15",
       "vix": 16.2,
       "voo": 693.83,
-      "fear_greed": 41.6
+      "fear_greed": 40.1
     },
     {
       "date": "2026-06-16",
       "vix": 16.41,
       "voo": 689.75,
-      "fear_greed": 39.1
+      "fear_greed": 39.5
     },
     {
       "date": "2026-06-17",
       "vix": 18.44,
       "voo": 681.41,
-      "fear_greed": 32.2
+      "fear_greed": 32.9
     },
     {
       "date": "2026-06-18",
       "vix": 16.4,
       "voo": 688.11,
-      "fear_greed": 37.6
+      "fear_greed": 37.3
     },
     {
       "date": "2026-06-19",
@@ -18068,55 +18068,55 @@
       "date": "2026-06-22",
       "vix": 17.28,
       "voo": 686.1,
-      "fear_greed": 32.0
+      "fear_greed": 33.9
     },
     {
       "date": "2026-06-23",
       "vix": 19.49,
       "voo": 676.34,
-      "fear_greed": 27.5
+      "fear_greed": 28.5
     },
     {
       "date": "2026-06-24",
       "vix": 18.63,
       "voo": 675.69,
-      "fear_greed": 26.0
+      "fear_greed": 26.5
     },
     {
       "date": "2026-06-25",
       "vix": 18.89,
       "voo": 675.71,
-      "fear_greed": 24.4
+      "fear_greed": 25.4
     },
     {
       "date": "2026-06-26",
       "vix": 18.41,
       "voo": 670.26,
-      "fear_greed": 25.1
+      "fear_greed": 24.7
     },
     {
       "date": "2026-06-29",
       "vix": 17.65,
       "voo": 681.01,
-      "fear_greed": 27.3
+      "fear_greed": 26.9
     },
     {
       "date": "2026-06-30",
       "vix": 16.45,
       "voo": 686.81,
-      "fear_greed": 30.9
+      "fear_greed": 30.0
     },
     {
       "date": "2026-07-01",
       "vix": 16.59,
       "voo": 685.46,
-      "fear_greed": 30.5
+      "fear_greed": 31.6
     },
     {
       "date": "2026-07-02",
       "vix": 16.15,
       "voo": 684.84,
-      "fear_greed": 37.5
+      "fear_greed": 32.5
     },
     {
       "date": "2026-07-03",
@@ -18128,43 +18128,43 @@
       "date": "2026-07-06",
       "vix": 15.57,
       "voo": 690.62,
-      "fear_greed": 44.0
+      "fear_greed": 41.7
     },
     {
       "date": "2026-07-07",
       "vix": 16.13,
       "voo": 687.08,
-      "fear_greed": 43.7
+      "fear_greed": 39.8
     },
     {
       "date": "2026-07-08",
       "vix": 16.9,
       "voo": 685.26,
-      "fear_greed": 44.1
+      "fear_greed": 38.6
     },
     {
       "date": "2026-07-09",
       "vix": 15.84,
       "voo": 690.69,
-      "fear_greed": 46.1
+      "fear_greed": 44.7
     },
     {
       "date": "2026-07-10",
       "vix": 15.03,
       "voo": 693.86,
-      "fear_greed": 48.4
+      "fear_greed": 46.8
     },
     {
       "date": "2026-07-13",
       "vix": 17.16,
       "voo": 688.5,
-      "fear_greed": 41.7
+      "fear_greed": 40.9
     },
     {
       "date": "2026-07-14",
       "vix": 16.5,
       "voo": 691.1,
-      "fear_greed": 45.4
+      "fear_greed": 41.1
     },
     {
       "date": "2026-07-15",
@@ -18174,9 +18174,9 @@
     },
     {
       "date": "2026-07-16",
-      "vix": 15.81,
-      "voo": 692.54,
-      "fear_greed": 47.8
+      "vix": 16.73,
+      "voo": 690.14,
+      "fear_greed": 41.7
     }
   ]
 }
