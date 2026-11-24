@@ -1,9 +1,9 @@
 {
   "current": {
-    "vix": 26.62,
-    "voo": 663.91,
-    "fear_greed": 17.0,
-    "updated_utc": "2026-11-24T04:54:41Z"
+    "vix": 26.36,
+    "voo": 660.71,
+    "fear_greed": 17.4,
+    "updated_utc": "2026-11-24T23:07:45Z"
   },
   "history": [
     {
@@ -18757,14 +18757,14 @@
     {
       "date": "2026-11-23",
       "vix": 26.62,
-      "fear_greed": 17.0,
+      "fear_greed": 14.9,
       "voo": 663.91
     },
     {
       "date": "2026-11-24",
-      "vix": 26.62,
-      "voo": 663.91,
-      "fear_greed": 17.0
+      "vix": 26.36,
+      "voo": 660.71,
+      "fear_greed": 17.4
     }
   ]
 }
